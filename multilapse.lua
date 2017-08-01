@@ -40,6 +40,10 @@ while true do -- main loop
 		status, ts = con:execwait_pcall[[return get_temperature(1)]]
 		status, to = con:execwait_pcall[[return get_temperature(0)]]
 		print('Temperature: sensor = '..ts..' optics = '..to) --crashed here because result is not a table
+		-- the following two lines allow to print sensor and lens temperatures in a CSV format, easy to grep
+		time = os.date("*t")
+		print(("SSTT,%02d%02d%02d-%02d%02d%02d,%02d,%02d"):format(time.year, time.month, time.day, time.hour, time.min, time.sec, ts, to))
+
 		print('Checking brightness level')
 		status, bv = con:execwait_pcall[[press'shoot_half' repeat sleep(10) until get_shooting() return get_prop(require('propcase').BV)]] --crashed here?
 		if not status
