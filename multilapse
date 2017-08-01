@@ -1,0 +1,12 @@
+#!/bin/sh
+echo none >/sys/class/leds/led0/trigger
+echo 0 >/sys/class/leds/led0/brightness
+echo none >/sys/class/leds/led1/trigger
+echo 0 >/sys/class/leds/led1/brightness
+/usr/bin/lan951x-led-ctl --spd=0 --lnk=0
+while [ true ]
+do
+	/root/chdkptp/chdkptp.sh -e'exec dofile("/root/multilapse.lua")' >>/root/multilapse.log 2>&1
+	sleep 10
+done
+
