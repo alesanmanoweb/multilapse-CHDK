@@ -1,12 +1,12 @@
 config_mod = 0
 exit_program = false
 while true do -- main loop
-	config_mod_check = lfs.attributes('/root/multilapse-config.lua', 'modification')
+	config_mod_check = lfs.attributes('/root/multilapse-CHDK/multilapse-config.lua', 'modification')
 	if config_mod ~= config_mod_check
 	then
 		print('Reloading config file!')
 		config_mod = config_mod_check
-		dofile('/root/multilapse-config.lua')
+		dofile('/root/multilapse-CHDK/multilapse-config.lua')
 	end
 	reinit = false -- used to 'manually break the shooting loop
 	print('Making sure camera is OFF')
@@ -37,8 +37,19 @@ while true do -- main loop
 	--print('Locking autofocus')
 	--cli:execute('=set_aflock(1)')
 	while true do -- shooting loop
+		os.execute('echo 0 >/sys/class/leds/led1/brightness')
 		status, ts = con:execwait_pcall[[return get_temperature(1)]]
+		if not status
+		then
+			print('Error reading temperature(1)')
+			break
+		end
 		status, to = con:execwait_pcall[[return get_temperature(0)]]
+		if not status
+		then
+			print('Error reading temperature(0)')
+			break
+		end
 		print('Temperature: sensor = '..ts..' optics = '..to) --crashed here because result is not a table
 		-- the following two lines allow to print sensor and lens temperatures in a CSV format, easy to grep
 		time = os.date("*t")
@@ -49,6 +60,7 @@ while true do -- main loop
 		if not status
 		then
 			print('*** *** *** Pre-shooting error')
+			break
 			bv = 0
 		else
 			print('BV = '..bv)
