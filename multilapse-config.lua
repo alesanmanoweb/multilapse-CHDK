@@ -2,8 +2,9 @@ config={
 	interval=600,
 	threshold=-620,
 	night_shutter='15',
+	zoom='0',
 	archive_path='/root/archive/',
 	camera_ID='B',
-	upload_URL='http://www.escursionisticivatesi.it/webcam/uploads/webcamup.php',
-	user='uploader5353:I+D#]%5k8ph1'
+	upload_URL='http://domain.com/webcam/uploads/webcamup.php',
+	user='user:password'
 }

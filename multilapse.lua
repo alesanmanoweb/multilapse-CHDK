@@ -30,7 +30,7 @@ while true do -- main loop
 	print('Disabling display')
 	cli:execute('=set_lcd_display(0)')
 	print('Setting zoom')
-	cli:execute('=set_zoom(0)')
+	cli:execute('=set_zoom('..config.zoom..')')
 	print('Setting resolution')
 	--cli:execute('=set_prop(require("propcase").WB_MODE, 1)') -- 0=Auto 1=daylight 2=cloudy
 	cli:execute('=set_prop(require("propcase").RESOLUTION, 1)')
