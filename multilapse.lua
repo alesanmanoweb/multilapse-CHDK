@@ -57,7 +57,7 @@ while true do -- main loop
 
 		print('Checking brightness level')
 		-- try to get BV waiting max one second for three times
-		status, bv = con:execwait_pcall[[
+		status, bv, try_focus, i = con:execwait_pcall[[
 			press'shoot_half'
 			try_focus = 0
 			max_try_focus = 3
@@ -68,7 +68,7 @@ while true do -- main loop
 					sleep(10)
 					i = i + 1
 					if get_shooting() then
-						return get_prop(require('propcase').BV)
+						return get_prop(require('propcase').BV), try_focus, i
 					end
 				until i > max_i
 				if i > max_i then
@@ -85,7 +85,7 @@ while true do -- main loop
 			break
 			bv = 0
 		else
-			print('BV = '..bv)
+			print('BV = '..bv..' try_focus = '..try_focus..' i = '..i)
 		end
 		timestamp = os.time()
 		if bv >= config.threshold
