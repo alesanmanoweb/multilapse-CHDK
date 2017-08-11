@@ -56,7 +56,29 @@ while true do -- main loop
 		print(("SSTT,%02d%02d%02d-%02d%02d%02d,%02d,%02d"):format(time.year, time.month, time.day, time.hour, time.min, time.sec, ts, to))
 
 		print('Checking brightness level')
-		status, bv = con:execwait_pcall[[press'shoot_half' repeat sleep(10) until get_shooting() return get_prop(require('propcase').BV)]] --crashed here?
+		-- try to get BV waiting max one second for three times
+		status, bv = con:execwait_pcall[[
+			press'shoot_half'
+			try_focus = 0
+			max_try_focus = 3
+			i = 0
+			max_i = 300
+			repeat
+				repeat
+					sleep(10)
+					i = i + 1
+					if get_shooting() then
+						return get_prop(require('propcase').BV)
+					end
+				until i > max_i
+				if i > max_i then
+					release'shoot_half'
+					sleep(1000)
+				end
+				try_focus = try_focus + 1
+			until try_focus > max_try_focus
+			error('Focus failed!')
+		]]
 		if not status
 		then
 			print('*** *** *** Pre-shooting error')
