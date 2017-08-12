@@ -1,3 +1,103 @@
+function camera_init()
+	print('Unpressing power button')
+	cli:execute('=post_levent_to_ui"UnpressPowerButton"')
+	print('Going into rec mode')
+	cli:execute('rec')
+	print('Setting P mode')
+	cli:execute('=require("capmode").set("P")')
+	print('Disabling flash')
+	cli:execute('=set_prop(require"propcase".FLASH_MODE,2)')
+	print('White balance')
+	cli:execute('=set_prop(require"propcase".WHITE_BALANCE,4)')
+	print('Disabling display')
+	cli:execute('=set_lcd_display(0)')
+	print('Setting zoom')
+	cli:execute('=set_zoom('..config.zoom..')')
+	print('Setting resolution')
+	--cli:execute('=set_prop(require("propcase").WB_MODE, 1)') -- 0=Auto 1=daylight 2=cloudy
+	cli:execute('=set_prop(require("propcase").RESOLUTION, 1)')
+	--print('Locking autofocus')
+	--cli:execute('=set_aflock(1)')
+end
+
+function capture_picture()
+	print('Checking brightness level')
+	-- try to get BV waiting max one second for three times
+	status, bv, try_focus, i = con:execwait_pcall[[
+		press'shoot_half'
+		try_focus = 0
+		max_try_focus = 3
+		i = 0
+		max_i = 300
+		repeat
+			repeat
+				sleep(10)
+				i = i + 1
+				if get_shooting() then
+					return get_prop(require('propcase').BV), try_focus, i
+				end
+			until i > max_i
+			if i > max_i then
+				release'shoot_half'
+				sleep(1000)
+			end
+			try_focus = try_focus + 1
+		until try_focus > max_try_focus
+		error('Focus failed!')
+	]]
+	if not status
+	then
+		print('*** *** *** Pre-shooting error')
+		break
+		bv = 0
+	else
+		print('BV = '..bv..' try_focus = '..try_focus..' i = '..i)
+	end
+	timestamp = os.time()
+	if bv >= config.threshold
+	then
+		print('Remote shoot!')
+		status, err = cli:execute('remoteshoot -sd=100000 image')
+	else
+		print('Night shoot!')
+		status, err = cli:execute('remoteshoot -sd=100000 -tv=16 image')
+--		print('Base shot...')
+--		status, err = cli:execute('remoteshoot -sd=100000 -tv=16 base')
+--		print('HDR shot 01...')
+--		status, err = cli:execute('remoteshoot -sd=100000 -tv=4 HDR01')
+--		print('HDR shot 02...')
+--		status, err = cli:execute('remoteshoot -sd=100000 -tv=1 HDR02')
+--		print('HDR shot 03...')
+--		status, err = cli:execute('remoteshoot -sd=100000 -tv=1/64 HDR03')
+--		print('Enfuse...')
+--		os.execute('enfuse --exposure-sigma=1 --output=fused.jpg HDR01.jpg HDR02.jpg HDR03.jpg')
+--		print('Composite...')
+--		os.execute('composite fused.jpg base.jpg /root/mask.png image.jpg')
+--		print('Clean up...')
+--		os.execute('rm base.jpg HDR01.jpg HDR02.jpg HDR03.jpg fused.jpg')
+		-- stampare iso, iso noise reduction mode etc
+	end
+	print(err)
+	if not status
+	then
+		print('*** *** *** Shooting error')
+		break
+	end
+	--print('Disabling display')
+	--cli:execute('=set_backlight(0)')
+end
+
+function store_picture()
+	print('Resizing image...')
+	os.execute('identify image.jpg')
+	os.execute('mogrify -resize 2048x1536 image.jpg')
+	filename = string.format(config.camera_ID..'-%08x.jpg', timestamp)
+	os.execute('mv image.jpg '..filename)
+	print('Uploading image...')
+	os.execute('curl -s -S -i -u "'..config.user..'" -F uploadedfile=@'..filename..' -F camera='..config.camera_ID..' -F timeStamp='..timestamp..' '..config.upload_URL)
+	os.execute('mv '..filename..' /root/archive/')
+end
+
 config_mod = 0
 exit_program = false
 while true do -- main loop
@@ -19,25 +119,7 @@ while true do -- main loop
 	sys.sleep(5 * 1000)
 	print('Connecting')
 	cli:execute('connect')
-	print('Unpressing power button')
-	cli:execute('=post_levent_to_ui"UnpressPowerButton"')
-	print('Going into rec mode')
-	cli:execute('rec')
-	print('Setting P mode')
-	cli:execute('=require("capmode").set("P")')
-	print('Disabling flash')
-	cli:execute('=set_prop(require"propcase".FLASH_MODE,2)')
-	print('White balance')
-	cli:execute('=set_prop(require"propcase".WHITE_BALANCE,4)')
-	print('Disabling display')
-	cli:execute('=set_lcd_display(0)')
-	print('Setting zoom')
-	cli:execute('=set_zoom('..config.zoom..')')
-	print('Setting resolution')
-	--cli:execute('=set_prop(require("propcase").WB_MODE, 1)') -- 0=Auto 1=daylight 2=cloudy
-	cli:execute('=set_prop(require("propcase").RESOLUTION, 1)')
-	--print('Locking autofocus')
-	--cli:execute('=set_aflock(1)')
+	camera_init()
 	while true do -- shooting loop
 		os.execute('echo 0 >/sys/class/leds/led1/brightness')
 		status, ts = con:execwait_pcall[[return get_temperature(1)]]
@@ -57,78 +139,9 @@ while true do -- main loop
 		time = os.date("*t")
 		print(("SSTT,%02d%02d%02d-%02d%02d%02d,%02d,%02d"):format(time.year, time.month, time.day, time.hour, time.min, time.sec, ts, to))
 
-		print('Checking brightness level')
-		-- try to get BV waiting max one second for three times
-		status, bv, try_focus, i = con:execwait_pcall[[
-			press'shoot_half'
-			try_focus = 0
-			max_try_focus = 3
-			i = 0
-			max_i = 300
-			repeat
-				repeat
-					sleep(10)
-					i = i + 1
-					if get_shooting() then
-						return get_prop(require('propcase').BV), try_focus, i
-					end
-				until i > max_i
-				if i > max_i then
-					release'shoot_half'
-					sleep(1000)
-				end
-				try_focus = try_focus + 1
-			until try_focus > max_try_focus
-			error('Focus failed!')
-		]]
-		if not status
-		then
-			print('*** *** *** Pre-shooting error')
-			break
-			bv = 0
-		else
-			print('BV = '..bv..' try_focus = '..try_focus..' i = '..i)
-		end
-		timestamp = os.time()
-		if bv >= config.threshold
-		then
-			print('Remote shoot!')
-			status, err = cli:execute('remoteshoot -sd=100000 image')
-		else
-			print('Night shoot!')
-			status, err = cli:execute('remoteshoot -sd=100000 -tv=16 image')
---			print('Base shot...')
---			status, err = cli:execute('remoteshoot -sd=100000 -tv=16 base')
---			print('HDR shot 01...')
---			status, err = cli:execute('remoteshoot -sd=100000 -tv=4 HDR01')
---			print('HDR shot 02...')
---			status, err = cli:execute('remoteshoot -sd=100000 -tv=1 HDR02')
---			print('HDR shot 03...')
---			status, err = cli:execute('remoteshoot -sd=100000 -tv=1/64 HDR03')
---			print('Enfuse...')
---			os.execute('enfuse --exposure-sigma=1 --output=fused.jpg HDR01.jpg HDR02.jpg HDR03.jpg')
---			print('Composite...')
---			os.execute('composite fused.jpg base.jpg /root/mask.png image.jpg')
---			print('Clean up...')
---			os.execute('rm base.jpg HDR01.jpg HDR02.jpg HDR03.jpg fused.jpg')
-			-- stampare iso, iso noise reduction mode etc
-		end
-		print(err)
-		if not status
-		then
-			print('*** *** *** Shooting error')
-			break
-		end
-		--print('Disabling display')
-		--cli:execute('=set_backlight(0)')
-		print('Resizing image...')
-		os.execute('identify image.jpg')
-		os.execute('mogrify -resize 2048x1536 image.jpg')
-		filename = string.format(config.camera_ID..'-%08x.jpg', timestamp)
-		os.execute('mv image.jpg '..filename)
-		print('Uploading image...')
-		os.execute('curl -s -S -i -u "'..config.user..'" -F uploadedfile=@'..filename..' -F camera='..config.camera_ID..' -F timeStamp='..timestamp..' '..config.upload_URL)
-		os.execute('mv '..filename..' /root/archive/')
+		capture_picture()
+		store_picture()
+		
 		while true do -- sleeping loop
 			sleeptime = config.interval - os.time() % config.interval
 			--print('Sleeping '..sleeptime..'s')
