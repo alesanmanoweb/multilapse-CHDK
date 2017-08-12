@@ -19,6 +19,8 @@ while true do -- main loop
 	sys.sleep(5 * 1000)
 	print('Connecting')
 	cli:execute('connect')
+	print('Unpressing power button')
+	cli:execute('=post_levent_to_ui"UnpressPowerButton"')
 	print('Going into rec mode')
 	cli:execute('rec')
 	print('Setting P mode')
