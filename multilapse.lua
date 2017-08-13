@@ -37,10 +37,8 @@ function capture_picture()
 					return get_prop(require('propcase').BV), try_focus, i
 				end
 			until i > max_i
-			if i > max_i then
-				release'shoot_half'
-				sleep(1000)
-			end
+			release'shoot_half'
+			sleep(1000)
 			try_focus = try_focus + 1
 		until try_focus > max_try_focus
 		error('Focus failed!')
@@ -48,8 +46,7 @@ function capture_picture()
 	if not status
 	then
 		print('*** *** *** Pre-shooting error')
-		break
-		bv = 0
+		return false
 	else
 		print('BV = '..bv..' try_focus = '..try_focus..' i = '..i)
 	end
@@ -81,10 +78,11 @@ function capture_picture()
 	if not status
 	then
 		print('*** *** *** Shooting error')
-		break
+		return false
 	end
 	--print('Disabling display')
 	--cli:execute('=set_backlight(0)')
+	return true
 end
 
 function store_picture()
@@ -139,7 +137,11 @@ while true do -- main loop
 		time = os.date("*t")
 		print(("SSTT,%02d%02d%02d-%02d%02d%02d,%02d,%02d"):format(time.year, time.month, time.day, time.hour, time.min, time.sec, ts, to))
 
-		capture_picture()
+		status = capture_picture()
+		if not status
+		then
+			break
+		end
 		store_picture()
 		
 		while true do -- sleeping loop
