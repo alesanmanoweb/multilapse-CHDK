@@ -1,23 +1,27 @@
+function cli_cmd(cmd)
+	return cli:print_status(cli:execute(cmd))
+end
+
 function camera_init()
 	print('Unpressing power button')
-	cli:execute('=post_levent_to_ui"UnpressPowerButton"')
+	cli_cmd('=post_levent_to_ui"UnpressPowerButton"')
 	print('Going into rec mode')
-	cli:execute('rec')
+	cli_cmd('rec')
 	print('Setting P mode')
-	cli:execute('=require("capmode").set("P")')
+	cli_cmd('=require("capmode").set("P")')
 	print('Disabling flash')
-	cli:execute('=set_prop(require"propcase".FLASH_MODE,2)')
+	cli_cmd('=set_prop(require"propcase".FLASH_MODE,2)')
 	print('White balance')
-	cli:execute('=set_prop(require"propcase".WHITE_BALANCE,4)')
+	cli_cmd('=set_prop(require"propcase".WHITE_BALANCE,4)')
 	print('Disabling display')
-	cli:execute('=set_lcd_display(0)')
+	cli_cmd('=set_lcd_display(0)')
 	print('Setting zoom')
-	cli:execute('=set_zoom('..config.zoom..')')
+	cli_cmd('=set_zoom('..config.zoom..')')
 	print('Setting resolution')
-	--cli:execute('=set_prop(require("propcase").WB_MODE, 1)') -- 0=Auto 1=daylight 2=cloudy
-	cli:execute('=set_prop(require("propcase").RESOLUTION, 1)')
+	--cli_cmd('=set_prop(require("propcase").WB_MODE, 1)') -- 0=Auto 1=daylight 2=cloudy
+	cli_cmd('=set_prop(require("propcase").RESOLUTION, 1)')
 	--print('Locking autofocus')
-	--cli:execute('=set_aflock(1)')
+	--cli_cmd('=set_aflock(1)')
 end
 
 function capture_picture()
@@ -54,18 +58,18 @@ function capture_picture()
 	if bv >= config.threshold
 	then
 		print('Remote shoot!')
-		status, err = cli:execute('remoteshoot -sd=100000 image')
+		status, err = cli_cmd('remoteshoot -sd=100000 image')
 	else
 		print('Night shoot!')
-		status, err = cli:execute('remoteshoot -sd=100000 -tv=16 image')
+		status, err = cli_cmd('remoteshoot -sd=100000 -tv=16 image')
 --		print('Base shot...')
---		status, err = cli:execute('remoteshoot -sd=100000 -tv=16 base')
+--		status, err = cli_cmd('remoteshoot -sd=100000 -tv=16 base')
 --		print('HDR shot 01...')
---		status, err = cli:execute('remoteshoot -sd=100000 -tv=4 HDR01')
+--		status, err = cli_cmd('remoteshoot -sd=100000 -tv=4 HDR01')
 --		print('HDR shot 02...')
---		status, err = cli:execute('remoteshoot -sd=100000 -tv=1 HDR02')
+--		status, err = cli_cmd('remoteshoot -sd=100000 -tv=1 HDR02')
 --		print('HDR shot 03...')
---		status, err = cli:execute('remoteshoot -sd=100000 -tv=1/64 HDR03')
+--		status, err = cli_cmd('remoteshoot -sd=100000 -tv=1/64 HDR03')
 --		print('Enfuse...')
 --		os.execute('enfuse --exposure-sigma=1 --output=fused.jpg HDR01.jpg HDR02.jpg HDR03.jpg')
 --		print('Composite...')
@@ -81,7 +85,7 @@ function capture_picture()
 		return false
 	end
 	--print('Disabling display')
-	--cli:execute('=set_backlight(0)')
+	--cli_cmd('=set_backlight(0)')
 	return true
 end
 
@@ -116,7 +120,7 @@ while true do -- main loop
 	print('Waiting 5s for boot...')
 	sys.sleep(5 * 1000)
 	print('Connecting')
-	cli:execute('connect')
+	cli_cmd('connect')
 	camera_init()
 	while true do -- shooting loop
 		os.execute('echo 0 >/sys/class/leds/led1/brightness')
@@ -175,8 +179,8 @@ while true do -- main loop
 		if reinit then break end
 	end
 	print('Turning camera OFF')
-	cli:execute([[. sleep(1000) post_levent_to_ui('PressPowerButton')]])
-	cli:execute('dis')
+	cli_cmd([[. sleep(1000) post_levent_to_ui('PressPowerButton')]])
+	cli_cmd('dis')
 	print('Waiting 5s...')
 	sys.sleep(1000 * 5)
 	os.execute('/root/turnoff')
