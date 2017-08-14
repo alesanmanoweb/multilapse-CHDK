@@ -12,13 +12,12 @@ function camera_init()
 	print('Disabling flash')
 	cli_cmd('=set_prop(require"propcase".FLASH_MODE,2)')
 	print('White balance')
-	cli_cmd('=set_prop(require"propcase".WHITE_BALANCE,4)')
+	cli_cmd('=set_prop(require"propcase".WB_MODE,1)') -- 0=Auto 1=daylight 2=cloudy
 	print('Disabling display')
 	cli_cmd('=set_lcd_display(0)')
 	print('Setting zoom')
 	cli_cmd('=set_zoom('..config.zoom..')')
 	print('Setting resolution')
-	--cli_cmd('=set_prop(require("propcase").WB_MODE, 1)') -- 0=Auto 1=daylight 2=cloudy
 	cli_cmd('=set_prop(require("propcase").RESOLUTION, 1)')
 	--print('Locking autofocus')
 	--cli_cmd('=set_aflock(1)')
@@ -124,19 +123,13 @@ while true do -- main loop
 	camera_init()
 	while true do -- shooting loop
 		os.execute('echo 0 >/sys/class/leds/led1/brightness')
-		status, ts = con:execwait_pcall[[return get_temperature(1)]]
+		status, ts, to = con:execwait_pcall[[return get_temperature(1), get_temperature(0)]]
 		if not status
 		then
-			print('Error reading temperature(1)')
+			print('Error reading temperatures!')
 			break
 		end
-		status, to = con:execwait_pcall[[return get_temperature(0)]]
-		if not status
-		then
-			print('Error reading temperature(0)')
-			break
-		end
-		print('Temperature: sensor = '..ts..' optics = '..to) --crashed here because result is not a table
+		print('Temperature: sensor = '..ts..' optics = '..to)
 		-- the following two lines allow to print sensor and lens temperatures in a CSV format, easy to grep
 		time = os.date("*t")
 		print(("SSTT,%02d%02d%02d-%02d%02d%02d,%02d,%02d"):format(time.year, time.month, time.day, time.hour, time.min, time.sec, ts, to))
