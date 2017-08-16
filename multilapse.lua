@@ -1,3 +1,7 @@
+require 'signal'
+signal.signal("SIGHUP", function() print('SIGHUP received\n') restart=true end)
+signal.signal("SIGTERM", function() print('SIGTERM received\n') restart=true terminate=true end)
+
 function cli_cmd(cmd)
 	return cli:print_status(cli:execute(cmd))
 end
@@ -100,8 +104,9 @@ function store_picture()
 end
 
 config_mod = 0
-exit_program = false
-while true do -- main loop
+terminate = false
+while not terminate do -- main loop
+	restart = false
 	config_mod_check = lfs.attributes('/root/multilapse-CHDK/multilapse-config.lua', 'modification')
 	if config_mod ~= config_mod_check
 	then
@@ -109,7 +114,6 @@ while true do -- main loop
 		config_mod = config_mod_check
 		dofile('/root/multilapse-CHDK/multilapse-config.lua')
 	end
-	reinit = false -- used to 'manually break the shooting loop
 	print('Making sure camera is OFF')
 	os.execute('/root/turnoff')
 	print('Waiting 5s...')
@@ -121,7 +125,7 @@ while true do -- main loop
 	print('Connecting')
 	cli_cmd('connect')
 	camera_init()
-	while true do -- shooting loop
+	while not restart do -- shooting loop
 		os.execute('echo 0 >/sys/class/leds/led1/brightness')
 		status, ts, to = con:execwait_pcall[[return get_temperature(1), get_temperature(0)]]
 		if not status
@@ -141,35 +145,9 @@ while true do -- main loop
 		end
 		store_picture()
 		
-		while true do -- sleeping loop
-			sleeptime = config.interval - os.time() % config.interval
-			--print('Sleeping '..sleeptime..'s')
-			if sleeptime > 10
-			then
-				--print('sleeptime>10; sleeping 10s')
-				sys.sleep(1000 * 10)
-				if lfs.attributes('/var/run/multilapse-exit')
-				then
-					print('exit file present')
-					os.remove('/var/run/multilapse-exit')
-					exit_program = true
-					reinit = true
-					break
-				end
-				if lfs.attributes('/var/run/multilapse-trigger')
-				then
-					print('trigger file present')
-					os.remove('/var/run/multilapse-trigger')
-					reinit = true
-					break
-				end
-			else
-				print('last sleep before planned shooting')
-				sys.sleep(1000 * sleeptime)
-				break
-			end
-		end
-		if reinit then break end
+		sleeptime = config.interval - os.time() % config.interval
+		print('Sleeping '..sleeptime..'s')
+		sys.sleep(1000 * sleeptime)
 	end
 	print('Turning camera OFF')
 	cli_cmd([[. sleep(1000) post_levent_to_ui('PressPowerButton')]])
@@ -178,6 +156,6 @@ while true do -- main loop
 	sys.sleep(1000 * 5)
 	os.execute('/root/turnoff')
 	sys.sleep(1000)
-	if exit_program then break end
 end
+print('Exiting!\n\n')
 
