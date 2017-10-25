@@ -16,7 +16,7 @@ function camera_init()
 	print('Disabling flash')
 	cli_cmd('=set_prop(require"propcase".FLASH_MODE,2)')
 	print('White balance')
-	cli_cmd('=set_prop(require"propcase".WB_MODE,1)') -- 0=Auto 1=daylight 2=cloudy
+	cli_cmd('=set_prop(require"propcase".WB_MODE,0)') -- 0=Auto 1=daylight 2=cloudy 3=tungsten 4=Fluorescent 5=Fluorescent H 6=Flash 7=Custom
 	print('Disabling display')
 	cli_cmd('=set_lcd_display(0)')
 	print('Setting zoom')
