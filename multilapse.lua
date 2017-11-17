@@ -13,58 +13,71 @@ function camera_init()
 	cli_cmd('rec')
 	print('Setting P mode')
 	cli_cmd('=require("capmode").set("P")')
-	print('Disabling flash')
-	cli_cmd('=set_prop(require"propcase".FLASH_MODE,2)')
-	print('White balance')
-	cli_cmd('=set_prop(require"propcase".WB_MODE,0)') -- 0=Auto 1=daylight 2=cloudy 3=tungsten 4=Fluorescent 5=Fluorescent H 6=Flash 7=Custom
+	if(config_option.flash ~= nil) then
+		print('Disabling flash')
+		cli_cmd('=set_prop(require"propcase".FLASH_MODE,2)')
+	end
+	if(config_option.whitebalance ~= nil) then
+		print('Setting white balance')
+		cli_cmd('=set_prop(require"propcase".WB_MODE,0)') -- 0=Auto 1=daylight 2=cloudy 3=tungsten 4=Fluorescent 5=Fluorescent H 6=Flash 7=Custom
+	end
+	if(config_option.zoom ~= nil) then
+		print('Setting zoom')
+		cli_cmd('=set_zoom('..config_option.zoom..')')
+	end
+	if(config_option.resolution ~= nil) then
+		print('Setting resolution')
+		cli_cmd('=set_prop(require("propcase").RESOLUTION, 1)')
+	end
 	print('Disabling display')
 	cli_cmd('=set_lcd_display(0)')
-	print('Setting zoom')
-	cli_cmd('=set_zoom('..config.zoom..')')
-	print('Setting resolution')
-	cli_cmd('=set_prop(require("propcase").RESOLUTION, 1)')
 	--print('Locking autofocus')
 	--cli_cmd('=set_aflock(1)')
 end
 
 function capture_picture()
-	print('Checking brightness level')
-	-- try to get BV waiting max one second for three times
-	status, bv, try_focus, i = con:execwait_pcall[[
-		press'shoot_half'
-		try_focus = 0
-		max_try_focus = 3
-		i = 0
-		max_i = 300
-		repeat
-			repeat
-				sleep(10)
-				i = i + 1
-				if get_shooting() then
-					return get_prop(require('propcase').BV), try_focus, i
-				end
-			until i > max_i
-			release'shoot_half'
-			sleep(1000)
-			try_focus = try_focus + 1
-		until try_focus > max_try_focus
-		error('Focus failed!')
-	]]
-	if not status
-	then
-		print('*** *** *** Pre-shooting error')
-		return false
-	else
-		print('BV = '..bv..' try_focus = '..try_focus..' i = '..i)
-	end
-	timestamp = os.time()
-	if bv >= config.threshold
-	then
+	if not config_night.enabled then
+		timestamp = os.time()
 		print('Remote shoot!')
 		status, err = cli_cmd('remoteshoot -sd=100000 image')
 	else
-		print('Night shoot!')
-		status, err = cli_cmd('remoteshoot -sd=100000 -tv=16 image')
+		print('Checking brightness level')
+		-- try to get BV waiting max one second for three times
+		status, bv, try_focus, i = con:execwait_pcall[[
+			press'shoot_half'
+			try_focus = 0
+			max_try_focus = 3
+			i = 0
+			max_i = 300
+			repeat
+				repeat
+					sleep(10)
+					i = i + 1
+					if get_shooting() then
+						return get_prop(require('propcase').BV), try_focus, i
+					end
+				until i > max_i
+				release'shoot_half'
+				sleep(1000)
+				try_focus = try_focus + 1
+			until try_focus > max_try_focus
+			error('Focus failed!')
+		]]
+		if not status
+		then
+			print('*** *** *** Pre-shooting error')
+			return false
+		else
+			print('BV = '..bv..' try_focus = '..try_focus..' i = '..i)
+		end
+		timestamp = os.time()
+		if bv >= config_night.threshold
+		then
+			print('Remote shoot!')
+			status, err = cli_cmd('remoteshoot -sd=100000 image')
+		else
+			print('Night shoot!')
+			status, err = cli_cmd('remoteshoot -sd=100000 -tv=16 image')
 --		print('Base shot...')
 --		status, err = cli_cmd('remoteshoot -sd=100000 -tv=16 base')
 --		print('HDR shot 01...')
@@ -80,6 +93,7 @@ function capture_picture()
 --		print('Clean up...')
 --		os.execute('rm base.jpg HDR01.jpg HDR02.jpg HDR03.jpg fused.jpg')
 		-- stampare iso, iso noise reduction mode etc
+		end
 	end
 	print(err)
 	if not status
@@ -96,10 +110,10 @@ function store_picture()
 	print('Resizing image...')
 	os.execute('identify image.jpg')
 	os.execute('mogrify -resize 2048x1536 image.jpg')
-	filename = string.format(config.camera_ID..'-%08x.jpg', timestamp)
+	filename = string.format(config_base.camera_ID..'-%08x.jpg', timestamp)
 	os.execute('mv image.jpg '..filename)
 	print('Uploading image...')
-	os.execute('curl -s -S -i -u "'..config.user..'" -F uploadedfile=@'..filename..' -F camera='..config.camera_ID..' -F timeStamp='..timestamp..' '..config.upload_URL)
+	os.execute('curl -s -S -i -u "'..config_base.user..'" -F uploadedfile=@'..filename..' -F camera='..config_base.camera_ID..' -F timeStamp='..timestamp..' '..config_base.upload_URL)
 	os.execute('mv '..filename..' /root/archive/')
 end
 
@@ -145,7 +159,7 @@ while not terminate do -- main loop
 		end
 		store_picture()
 		
-		sleeptime = config.interval - os.time() % config.interval
+		sleeptime = config_base.interval - os.time() % config_base.interval
 		print('Sleeping '..sleeptime..'s')
 		sys.sleep(1000 * sleeptime)
 	end

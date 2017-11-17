@@ -1,0 +1,25 @@
+-- the values in config_base are mandatory
+config_base={
+	camera_ID='B',
+	interval=600,
+	archive_path='/root/archive/',
+	upload_URL='http://domain.com/webcam/uploads/webcamup.php',
+	user='user:password'
+}
+
+-- enable these options carefully - some cameras might not support some of
+-- these properties and might crash. It's a good idea to change one at a time
+config_option={
+--	zoom='0',
+--	flash='2',
+--	whitebalance='0',
+--	resolution='1'
+}
+
+-- 'night' shutter speed for low light conditions should be generally safe.
+config_night={
+	enabled=true,
+	threshold=-620,
+	shutter='15'
+}
+
