@@ -17,7 +17,7 @@ function camera_init()
 		print('Disabling flash')
 		cli_cmd('=set_prop(require"propcase".FLASH_MODE,2)')
 	end
-	if(config_option.whitebalance ~= nil) then
+	if(config_option.white_balance ~= nil) then
 		print('Setting white balance')
 		cli_cmd('=set_prop(require"propcase".WB_MODE,0)') -- 0=Auto 1=daylight 2=cloudy 3=tungsten 4=Fluorescent 5=Fluorescent H 6=Flash 7=Custom
 	end
@@ -107,14 +107,27 @@ function capture_picture()
 end
 
 function store_picture()
-	print('Resizing image...')
-	os.execute('identify image.jpg')
-	os.execute('mogrify -resize 2048x1536 image.jpg')
+	if(config_storage.resize) then
+		-- we assume imagemagick is installed
+		print('Resizing image...')
+		os.execute('identify image.jpg')
+		os.execute('mogrify -resize '..config_storage.resize_geometry..' image.jpg')
+	end
 	filename = string.format(config_base.camera_ID..'-%08x.jpg', timestamp)
 	os.execute('mv image.jpg '..filename)
-	print('Uploading image...')
-	os.execute('curl -s -S -i -u "'..config_base.user..'" -F uploadedfile=@'..filename..' -F camera='..config_base.camera_ID..' -F timeStamp='..timestamp..' '..config_base.upload_URL)
-	os.execute('mv '..filename..' /root/archive/')
+	if(config_storage.upload) then
+		-- we assume curl is installed
+		print('Uploading image...')
+		if(config_storage.upload_type == 'http') then
+			os.execute('curl -s -S -i -u "'..config_storage.upload_user..'" -F uploadedfile=@'..filename..' -F camera='..config_base.camera_ID..' -F timeStamp='..timestamp..' "'..config_storage.upload_URL..'"')
+		elseif(config_storage.upload_type == 'ftp') then
+			os.execute('curl -s -S -u "'..config_storage.upload_user..'" -T "'..filename..'" "'..config_storage.upload_URL..'"')
+		end
+	end
+	if(config_storage.local_archive) then
+		-- the following might fail if the path in the config is not correct
+		os.execute('mv '..filename..' '..config_storage.archive_path)
+	end
 end
 
 config_mod = 0

@@ -2,9 +2,17 @@
 config_base={
 	camera_ID='B',
 	interval=600,
-	archive_path='/root/archive/',
-	upload_URL='http://domain.com/webcam/uploads/webcamup.php',
-	user='user:password'
+}
+
+config_storage={
+        resize=true,
+        resize_geometry='2048x1536',
+        local_archive=true,
+        archive_path='/root/archive/',
+        upload=true,
+        upload_type='ftp', -- Options: http, ftp
+	upload_URL='ftp://domain.com/webcam/',
+	upload_user='user:password'
 }
 
 -- enable these options carefully - some cameras might not support some of
