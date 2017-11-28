@@ -68,7 +68,7 @@ function capture_picture()
 							bv=get_prop(p.BV),
 							tv=get_prop(p.TV),
 							av=get_prop(p.AV),
-							av_min=get_prop(p.MIN_AV),
+							min_av=get_prop(p.MIN_AV),
 							sv=get_prop(p.SV),
 							try_focus=try_focus,
 							i=i
@@ -86,7 +86,7 @@ function capture_picture()
 			print('*** *** *** Pre-shooting error: '..tostring(values))
 			return false
 		else
-			print('BV = '..values.bv..' TV = '..values.tv..' AV = '..values.av..' AV_MIN = '..values.av_min..' SV = '..values.sv..' try_focus = '..values.try_focus..' i = '..values.i)
+			print('BV = '..values.bv..' TV = '..values.tv..' AV = '..values.av..' MIN_AV = '..values.min_av..' SV = '..values.sv..' try_focus = '..values.try_focus..' i = '..values.i)
 		end
 		timestamp = os.time()
 		if values.bv >= config_night.threshold
