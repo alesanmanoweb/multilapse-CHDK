@@ -55,9 +55,9 @@ function capture_picture()
 			p = require('propcase')
 			try_focus = 0
 			max_try_focus = 3
-			i = 0
 			max_i = 300
 			repeat
+				i = 0
 				press'shoot_half'
 				repeat
 					sleep(10)
@@ -83,7 +83,7 @@ function capture_picture()
 		]]
 		if not status
 		then
-			print('*** *** *** Pre-shooting error: '..tostring(vals))
+			print('*** *** *** Pre-shooting error: '..tostring(values))
 			return false
 		else
 			print('BV = '..values.bv..' TV = '..values.tv..' AV = '..values.av..' AV_MIN = '..values.av_min..' SV = '..values.sv..' try_focus = '..values.try_focus..' i = '..values.i)
@@ -93,11 +93,11 @@ function capture_picture()
 		then
 			print('Remote shoot!')
 			local nd='out'
-			if vals.min_av ~= vals.av
+			if values.min_av ~= values.av
 			then
 				nd='in'
 			end
-			do_shoot(vals.tv, vals.sv, nd, 1)
+			do_shoot(values.tv, values.sv, nd, 1)
 			--status, err = cli_cmd('remoteshoot -sd=100000 image')
 		else
 			print('Night shoot!')
