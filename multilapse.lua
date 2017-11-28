@@ -35,9 +35,9 @@ function camera_init()
 	--cli_cmd('=set_aflock(1)')
 end
 
-function do_shoot(tv, sv, nd, shot)
+function do_shoot(tv, sv, nd, imagename)
 	--local cmd=string.format('remoteshoot -u=96 -tv=%d -sv=%d -nd=%s -sd=100000 image%d', tv, sv, nd, shot)
-	local cmd=string.format('remoteshoot -u=96 -tv=%d -sv=%d -nd=%s -sd=100000 image', tv, sv, nd)
+	local cmd=string.format('remoteshoot -u=96 -tv=%d -sv=%d -nd=%s -sd=100000 %s', tv, sv, nd, imagename)
 	printf('%s\n',cmd)
 	cli:execute(cmd)
 	--  status, err = cli_cmd(cmd)
@@ -97,7 +97,8 @@ function capture_picture()
 			then
 				nd='in'
 			end
-			do_shoot(values.tv, values.sv, nd, 1)
+			do_shoot(values.tv, values.sv, nd, 'image')
+			do_shoot(values.tv + 96 * 2, values.sv, nd, 'image-')
 			--status, err = cli_cmd('remoteshoot -sd=100000 image')
 		else
 			print('Night shoot!')
@@ -136,9 +137,10 @@ function store_picture()
 		print('Resizing image...')
 		os.execute('identify image.jpg')
 		os.execute('mogrify -resize '..config_storage.resize_geometry..' image.jpg')
+		os.execute('mogrify -resize '..config_storage.resize_geometry..' image-.jpg')
 	end
 	filename = string.format(config_base.camera_ID..'-%08x.jpg', timestamp)
-	os.execute('mv image.jpg '..filename)
+	os.execute('cp image.jpg '..filename)
 	if(config_storage.upload) then
 		-- we assume curl is installed
 		print('Uploading image...')
