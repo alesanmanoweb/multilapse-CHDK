@@ -35,6 +35,14 @@ function camera_init()
 	--cli_cmd('=set_aflock(1)')
 end
 
+function do_shoot(tv, sv, nd, shot)
+	--local cmd=string.format('remoteshoot -u=96 -tv=%d -sv=%d -nd=%s -sd=100000 image%d', tv, sv, nd, shot)
+	local cmd=string.format('remoteshoot -u=96 -tv=%d -sv=%d -nd=%s -sd=100000 image', tv, sv, nd)
+	printf('%s\n',cmd)
+	cli:execute(cmd)
+	--  status, err = cli_cmd(cmd)
+end
+
 function capture_picture()
 	if not config_night.enabled then
 		timestamp = os.time()
@@ -43,18 +51,28 @@ function capture_picture()
 	else
 		print('Checking brightness level')
 		-- try to get BV waiting max one second for three times
-		status, bv, try_focus, i = con:execwait_pcall[[
-			press'shoot_half'
+		status, values = con:execwait_pcall[[
+			p = require('propcase')
 			try_focus = 0
 			max_try_focus = 3
 			i = 0
 			max_i = 300
 			repeat
+				press'shoot_half'
 				repeat
 					sleep(10)
 					i = i + 1
 					if get_shooting() then
-						return get_prop(require('propcase').BV), try_focus, i
+						return
+						{
+							bv=get_prop(p.BV),
+							tv=get_prop(p.TV),
+							av=get_prop(p.AV),
+							av_min=get_prop(p.MIN_AV),
+							sv=get_prop(p.SV),
+							try_focus=try_focus,
+							i=i
+						}
 					end
 				until i > max_i
 				release'shoot_half'
@@ -65,16 +83,22 @@ function capture_picture()
 		]]
 		if not status
 		then
-			print('*** *** *** Pre-shooting error')
+			print('*** *** *** Pre-shooting error: '..tostring(vals))
 			return false
 		else
-			print('BV = '..bv..' try_focus = '..try_focus..' i = '..i)
+			print('BV = '..values.bv..' TV = '..values.tv..' AV = '..values.av..' AV_MIN = '..values.av_min..' SV = '..values.sv..' try_focus = '..values.try_focus..' i = '..values.i)
 		end
 		timestamp = os.time()
-		if bv >= config_night.threshold
+		if values.bv >= config_night.threshold
 		then
 			print('Remote shoot!')
-			status, err = cli_cmd('remoteshoot -sd=100000 image')
+			local nd='out'
+			if vals.min_av ~= vals.av
+			then
+				nd='in'
+			end
+			do_shoot(vals.tv, vals.sv, nd, 1)
+			--status, err = cli_cmd('remoteshoot -sd=100000 image')
 		else
 			print('Night shoot!')
 			status, err = cli_cmd('remoteshoot -sd=100000 -tv=16 image')
