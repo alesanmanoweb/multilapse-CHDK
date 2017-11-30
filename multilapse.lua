@@ -47,9 +47,9 @@ function capture_picture()
 			press'shoot_half'
 			try_focus = 0
 			max_try_focus = 3
-			i = 0
-			max_i = 300
 			repeat
+				i = 0
+				max_i = 300
 				repeat
 					sleep(10)
 					i = i + 1
@@ -106,7 +106,7 @@ function capture_picture()
 	return true
 end
 
-function store_picture()
+function store_picture(timestamp)
 	if(config_storage.resize) then
 		-- we assume imagemagick is installed
 		print('Resizing image...')
@@ -170,7 +170,7 @@ while not terminate do -- main loop
 		then
 			break
 		end
-		store_picture()
+		store_picture(timestamp)
 		
 		sleeptime = config_base.interval - os.time() % config_base.interval
 		print('Sleeping '..sleeptime..'s')
