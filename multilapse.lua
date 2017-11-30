@@ -44,12 +44,12 @@ function capture_picture()
 		print('Checking brightness level')
 		-- try to get BV waiting max one second for three times
 		status, bv, try_focus, i = con:execwait_pcall[[
-			press'shoot_half'
 			try_focus = 0
 			max_try_focus = 3
+			max_i = 300
 			repeat
 				i = 0
-				max_i = 300
+				press'shoot_half'
 				repeat
 					sleep(10)
 					i = i + 1
