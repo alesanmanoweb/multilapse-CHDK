@@ -35,6 +35,46 @@ function camera_init()
 	--cli_cmd('=set_aflock(1)')
 end
 
+function print_histo(histo, tot)
+	bin = {}
+	local bin_idx = 0
+	for i = 0, 255, 8
+	do
+		local bin_count = 0
+		for j = 0, 7
+		do
+			bin_count = bin_count + histo[i + j]
+		end
+		bin[bin_idx] = 80 * bin_count / tot
+		bin_idx = bin_idx + 1
+	end
+	--for i = 0, 31
+	--do
+	--	printf('%3d: %d\n', i, bin[i])
+	--end
+	--for i = 0, 31
+	--do
+	--	printf('%3d: %s\n', i, string.rep('*', bin[i]))
+	--end
+	print('    ================================')
+	for i = 8, 1, -1
+	do
+		printf('%d: |', i)
+		for j = 0, 31
+		do
+			if bin[j] >= i * 10 - 5
+			then
+				printf('*')
+			else
+				printf(' ')
+			end
+			--printf('%3d: %s\n', i, string.rep('*', bin[i]))
+		end
+		printf('|\n')
+	end
+	print('    ================================')
+end
+
 function do_shoot(tv, sv, nd, imagename)
 	--local cmd=string.format('remoteshoot -u=96 -tv=%d -sv=%d -nd=%s -sd=100000 image%d', tv, sv, nd, shot)
 	local cmd=string.format('remoteshoot -u=96 -tv=%d -sv=%d -nd=%s -sd=100000 %s', tv, sv, nd, imagename)
@@ -49,6 +89,7 @@ function capture_picture()
 		print('Remote shoot!')
 		status, err = cli_cmd('remoteshoot -sd=100000 image')
 	else
+		hdrhi = false
 		print('Checking brightness level')
 		-- try to get BV waiting max one second for three times
 		status, values = con:execwait_pcall[[
@@ -63,15 +104,18 @@ function capture_picture()
 					sleep(10)
 					i = i + 1
 					if get_shooting() then
+						histo, histo_tot = get_live_histo()
 						return
 						{
-							bv=get_prop(p.BV),
-							tv=get_prop(p.TV),
-							av=get_prop(p.AV),
-							min_av=get_prop(p.MIN_AV),
-							sv=get_prop(p.SV),
-							try_focus=try_focus,
-							i=i
+							bv = get_prop(p.BV),
+							tv = get_prop(p.TV),
+							av = get_prop(p.AV),
+							min_av = get_prop(p.MIN_AV),
+							sv = get_prop(p.SV),
+							histo = histo,
+							histo_tot = histo_tot,
+							try_focus  =try_focus,
+							i = i
 						}
 					end
 				until i > max_i
@@ -86,19 +130,27 @@ function capture_picture()
 			print('*** *** *** Pre-shooting error: '..tostring(values))
 			return false
 		else
-			print('BV = '..values.bv..' TV = '..values.tv..' AV = '..values.av..' MIN_AV = '..values.min_av..' SV = '..values.sv..' try_focus = '..values.try_focus..' i = '..values.i)
+			x = 0
+			for i = 223, 255 do x = x + values.histo[i] end
+			frac = x / values.histo_tot
+			hdrhi = (frac > 0.25)
+			print('BV = '..values.bv..' TV = '..values.tv..' AV = '..values.av..' MIN_AV = '..values.min_av..' SV = '..values.sv..' HDRhi = '..tostring(hdrhi)..' try_focus = '..values.try_focus..' i = '..values.i)
+			print_histo(values.histo, values.histo_tot)
 		end
 		timestamp = os.time()
 		if values.bv >= config_night.threshold
 		then
 			print('Remote shoot!')
-			local nd='out'
+			local nd = 'out'
 			if values.min_av ~= values.av
 			then
-				nd='in'
+				nd = 'in'
 			end
 			do_shoot(values.tv, values.sv, nd, 'image')
-			do_shoot(values.tv + 96 * 2, values.sv, nd, 'image-')
+			if hdrhi
+			then
+				do_shoot(values.tv + 96 * 2, values.sv, nd, 'imagehi')
+			end
 			--status, err = cli_cmd('remoteshoot -sd=100000 image')
 		else
 			print('Night shoot!')
@@ -131,16 +183,15 @@ function capture_picture()
 	return true
 end
 
-function store_picture()
+function store_picture(timestamp)
 	if(config_storage.resize) then
 		-- we assume imagemagick is installed
 		print('Resizing image...')
 		os.execute('identify image.jpg')
 		os.execute('mogrify -resize '..config_storage.resize_geometry..' image.jpg')
-		os.execute('mogrify -resize '..config_storage.resize_geometry..' image-.jpg')
 	end
 	filename = string.format(config_base.camera_ID..'-%08x.jpg', timestamp)
-	os.execute('cp image.jpg '..filename)
+	os.execute('mv image.jpg '..filename)
 	if(config_storage.upload) then
 		-- we assume curl is installed
 		print('Uploading image...')
@@ -153,6 +204,12 @@ function store_picture()
 	if(config_storage.local_archive) then
 		-- the following might fail if the path in the config is not correct
 		os.execute('mv '..filename..' '..config_storage.archive_path)
+	end
+	if hdrhi
+	then
+		os.execute('mogrify -resize '..config_storage.resize_geometry..' imagehi.jpg')
+		filename = string.format(config_base.camera_ID..'-%08x-hi.jpg', timestamp)
+		os.execute('mv imagehi.jpg '..config_storage.archive_path..'/'..filename)
 	end
 end
 
@@ -196,7 +253,7 @@ while not terminate do -- main loop
 		then
 			break
 		end
-		store_picture()
+		store_picture(timestamp)
 		
 		sleeptime = config_base.interval - os.time() % config_base.interval
 		print('Sleeping '..sleeptime..'s')
