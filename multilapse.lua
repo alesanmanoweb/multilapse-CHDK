@@ -14,20 +14,20 @@ function camera_init()
 	print('Setting P mode')
 	cli_cmd('=require("capmode").set("P")')
 	if(config_option.flash ~= nil) then
-		print('Disabling flash')
-		cli_cmd('=set_prop(require"propcase".FLASH_MODE,2)')
+		print('Disabling flash: '..config_option.flash)
+		cli_cmd('=set_prop(require"propcase".FLASH_MODE, '..config_option.flash..')')
 	end
-	if(config_option.white_balance ~= nil) then
-		print('Setting white balance')
-		cli_cmd('=set_prop(require"propcase".WB_MODE,0)') -- 0=Auto 1=daylight 2=cloudy 3=tungsten 4=Fluorescent 5=Fluorescent H 6=Flash 7=Custom
+	if(config_option.whitebalance ~= nil) then
+		print('Setting white balance: '..config_option.whitebalance)
+		cli_cmd('=set_prop(require"propcase".WB_MODE, '..config_option.whitebalance..')') -- 0=Auto 1=daylight 2=cloudy 3=tungsten 4=Fluorescent 5=Fluorescent H 6=Flash 7=Custom
 	end
 	if(config_option.zoom ~= nil) then
-		print('Setting zoom')
+		print('Setting zoom: '..config_option.zoom)
 		cli_cmd('=set_zoom('..config_option.zoom..')')
 	end
 	if(config_option.resolution ~= nil) then
-		print('Setting resolution')
-		cli_cmd('=set_prop(require("propcase").RESOLUTION, 1)')
+		print('Setting resolution: '..config_option.resolution)
+		cli_cmd('=set_prop(require("propcase").RESOLUTION, '..config_option.resolution..')')
 	end
 	print('Disabling display')
 	cli_cmd('=set_lcd_display(0)')
