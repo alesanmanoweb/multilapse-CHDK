@@ -38,29 +38,32 @@ end
 function print_histo(histo, tot)
 	bin = {}
 	local bin_idx = 0
-	for i = 0, 255, 8
+	for i = 0, 255, 16
 	do
 		local bin_count = 0
-		for j = 0, 7
+		for j = 0, 15
 		do
 			bin_count = bin_count + histo[i + j]
 		end
-		bin[bin_idx] = 80 * bin_count / tot
+		bin[bin_idx] = 100 * bin_count / tot
 		bin_idx = bin_idx + 1
 	end
-	--for i = 0, 31
-	--do
-	--	printf('%3d: %d\n', i, bin[i])
-	--end
-	--for i = 0, 31
-	--do
-	--	printf('%3d: %s\n', i, string.rep('*', bin[i]))
-	--end
+	--[[
+	for i = 0, 15
+	do
+		printf('%3d: %d\n', i, bin[i])
+	end
+	]]
+	for i = 0, 15
+	do
+		printf('%3d: %s\n', i, string.rep('*', bin[i]))
+	end
+	--[[
 	print('    ================================')
 	for i = 8, 1, -1
 	do
 		printf('%d: |', i)
-		for j = 0, 31
+		for j = 0, 15
 		do
 			if bin[j] >= i * 10 - 5
 			then
@@ -73,6 +76,7 @@ function print_histo(histo, tot)
 		printf('|\n')
 	end
 	print('    ================================')
+	]]
 end
 
 function do_shoot(tv, sv, nd, imagename)
@@ -89,6 +93,7 @@ function capture_picture()
 		print('Remote shoot!')
 		status, err = cli_cmd('remoteshoot -sd=100000 image')
 	else
+		hdrlo = false
 		hdrhi = false
 		print('Checking brightness level')
 		-- try to get BV waiting max one second for three times
@@ -129,18 +134,22 @@ function capture_picture()
 		then
 			print('*** *** *** Pre-shooting error: '..tostring(values))
 			return false
-		else
-			x = 0
-			for i = 223, 255 do x = x + values.histo[i] end
-			frac = x / values.histo_tot
-			hdrhi = (frac > 0.25)
-			print('BV = '..values.bv..' TV = '..values.tv..' AV = '..values.av..' MIN_AV = '..values.min_av..' SV = '..values.sv..' HDRhi = '..tostring(hdrhi)..' try_focus = '..values.try_focus..' i = '..values.i)
-			print_histo(values.histo, values.histo_tot)
 		end
 		timestamp = os.time()
 		if values.bv >= config_night.threshold
 		then
+			-- HDR detection
+			x = 0
+			for i = 223, 255 do x = x + values.histo[i] end
+			frac = x / values.histo_tot
+			hdrhi = (frac > 0.10)
+			for i = 0, 31 do x = x + values.histo[i] end
+			frac = x / values.histo_tot
+			hdrlo = (frac > 0.10)
+			print('BV = '..values.bv..' TV = '..values.tv..' AV = '..values.av..' MIN_AV = '..values.min_av..' SV = '..values.sv..' HDRhi = '..tostring(hdrhi)..' HDRlo = '..tostring(hdrlo)..' try_focus = '..values.try_focus..' i = '..values.i)
+			print_histo(values.histo, values.histo_tot)
 			print('Remote shoot!')
+			-- exposure calculation
 			local nd = 'out'
 			if values.min_av ~= values.av
 			then
@@ -150,6 +159,10 @@ function capture_picture()
 			if hdrhi
 			then
 				do_shoot(values.tv + 96 * 2, values.sv, nd, 'imagehi')
+			end
+			if hdrlo
+			then
+				do_shoot(values.tv - 96 * 2, values.sv, nd, 'imagelo')
 			end
 			--status, err = cli_cmd('remoteshoot -sd=100000 image')
 		else
@@ -191,6 +204,7 @@ function store_picture(timestamp)
 		os.execute('mogrify -resize '..config_storage.resize_geometry..' image.jpg')
 	end
 	filename = string.format(config_base.camera_ID..'-%08x.jpg', timestamp)
+	print('filename: '..filename)
 	os.execute('mv image.jpg '..filename)
 	if(config_storage.upload) then
 		-- we assume curl is installed
@@ -210,6 +224,19 @@ function store_picture(timestamp)
 		os.execute('mogrify -resize '..config_storage.resize_geometry..' imagehi.jpg')
 		filename = string.format(config_base.camera_ID..'-%08x-hi.jpg', timestamp)
 		os.execute('mv imagehi.jpg '..config_storage.archive_path..'/'..filename)
+	end
+	if hdrlo
+	then
+		os.execute('mogrify -resize '..config_storage.resize_geometry..' imagelo.jpg')
+		filename = string.format(config_base.camera_ID..'-%08x-lo.jpg', timestamp)
+		os.execute('mv imagelo.jpg '..config_storage.archive_path..'/'..filename)
+	end
+	if hdrhi or hdrlo
+	then
+		filename = string.format(config_base.camera_ID..'-%08x', timestamp)
+		cmdline = 'enfuse '..filename..'* -o '..config_storage.archive_path..'/'..filename..'xxx.jpg'
+		print(cmdline)
+		os.execute(cmdline)
 	end
 end
 
