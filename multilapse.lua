@@ -35,7 +35,7 @@ function camera_init()
 	--cli_cmd('=set_aflock(1)')
 end
 
-function print_histo(histo, tot)
+function print_histo(histo, tot, timestamp)
 	bin = {}
 	local bin_idx = 0
 	for i = 0, 255, 16
@@ -48,12 +48,12 @@ function print_histo(histo, tot)
 		bin[bin_idx] = 100 * bin_count / tot
 		bin_idx = bin_idx + 1
 	end
-	--[[
+	printf('histo %08x: ', timestamp)
 	for i = 0, 15
 	do
-		printf('%3d: %d\n', i, bin[i])
+		printf('%d, ', bin[i])
 	end
-	]]
+	printf('\n')
 	for i = 0, 15
 	do
 		printf('%3d: %s\n', i, string.rep('*', bin[i]))
@@ -147,7 +147,7 @@ function capture_picture()
 			frac = x / values.histo_tot
 			hdrlo = (frac > 0.10)
 			print('BV = '..values.bv..' TV = '..values.tv..' AV = '..values.av..' MIN_AV = '..values.min_av..' SV = '..values.sv..' HDRhi = '..tostring(hdrhi)..' HDRlo = '..tostring(hdrlo)..' try_focus = '..values.try_focus..' i = '..values.i)
-			print_histo(values.histo, values.histo_tot)
+			print_histo(values.histo, values.histo_tot, timestamp)
 			print('Remote shoot!')
 			-- exposure calculation
 			local nd = 'out'
