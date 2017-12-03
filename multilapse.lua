@@ -143,6 +143,7 @@ function capture_picture()
 			for i = 223, 255 do x = x + values.histo[i] end
 			frac = x / values.histo_tot
 			hdrhi = (frac > 0.10)
+			x = 0
 			for i = 0, 31 do x = x + values.histo[i] end
 			frac = x / values.histo_tot
 			hdrlo = (frac > 0.10)
@@ -234,7 +235,7 @@ function store_picture(timestamp)
 	if hdrhi or hdrlo
 	then
 		filename = string.format(config_base.camera_ID..'-%08x', timestamp)
-		cmdline = 'enfuse '..filename..'* -o '..config_storage.archive_path..'/'..filename..'xxx.jpg'
+		cmdline = 'enfuse '..config_storage.archive_path..filename..'* -o '..config_storage.archive_path..'hdr/'..filename..'.jpg'
 		print(cmdline)
 		os.execute(cmdline)
 	end
